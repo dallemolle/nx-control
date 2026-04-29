@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: nxcontrol-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-nxcontrol}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nxcontrol_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-nxcontrol}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-nxcontrol} -d ${POSTGRES_DB:-nxcontrol}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - nxcontrol-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    container_name: nxcontrol-app
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-nxcontrol}:${POSTGRES_PASSWORD:-nxcontrol_secret}@db:5432/${POSTGRES_DB:-nxcontrol}?schema=public
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - nxcontrol-network
+
+  prisma:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    container_name: nxcontrol-prisma
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-nxcontrol}:${POSTGRES_PASSWORD:-nxcontrol_secret}@db:5432/${POSTGRES_DB:-nxcontrol}?schema=public
+    volumes:
+      - ./src:/app/src
+      - ./prisma:/app/prisma
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - nxcontrol-network
+    profiles:
+      - dev
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  nxcontrol-network:
+    driver: bridge

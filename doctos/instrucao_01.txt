@@ -1,0 +1,76 @@
+quero que o acesso seja feito por um botao "ERP" que ficará no lado direito superior da pagina inicial
+
+para acessar essa aplicacao, tenho que ter um usuario e senha que só poderá ser cadastrado pelo admin. entao, para acessar, deverá ter um acesso root para o primeiro acesso 
+
+📄 NXControl_Master_Plan.txt
+
+PROJETO: NXControl ERP (SaaS Robust)
+STACK: Node.js, Next.js, PostgreSQL
+PRINCÍPIO: Clean Architecture, Multi-tenancy, Inteligência Consultiva
+1. VISÃO GERAL E POSICIONAMENTO
+
+O NXControl não é um simples app de registro; é um parceiro de decisão estratégica. Ele une a agilidade de um ERP moderno à profundidade de uma consultoria financeira e contábil. A interface deve seguir um design minimalista que transmita autoridade, precisão e confiança.
+2. ARQUITETURA BASE (O ESQUELETO)
+
+Antes de desenvolver funcionalidades, a IA deve estabelecer a infraestrutura:
+
+    Multi-tenancy: Isolamento total de dados por organização (Tenant/Company).
+
+    RBAC (Controle de Acesso): Permissões granulares para diferentes funções (ex: Vendedor vs. Gerente).
+
+    Service Layer: Lógica de negócio isolada em serviços para processos complexos (ex: ProcessarVendaService).
+
+    Trilha de Auditoria (Logs): Registro nativo de quem alterou dados críticos e quando.
+
+    Conformidade ACID: Garantia de integridade em transações simultâneas (estoque + financeiro).
+
+3. MODELAGEM DE DADOS (POSTGRESQL)
+
+    Soft Delete: Uso de flags para desativação em vez de exclusão física de registros críticos.
+
+    Estrutura de Tabelas Core:
+
+        Entidades: Clientes, Fornecedores e Transportadoras.
+
+        Produtos: Suporte a NCM, variações, unidades de medida e controle de impostos.
+
+4. ROTEIRO DE DESENVOLVIMENTO MODULAR
+Módulo 1: Core & Inventário (WMS)
+
+    Controle de entradas (compras), saídas (vendas) e movimentações entre depósitos.
+
+    Gestão de inventário e alertas de ruptura de estoque.
+
+Módulo 2: Financeiro Estratégico
+
+    Foco em operação empresarial: Contas a Pagar/Receber e Conciliação Bancária.
+
+    Fluxo de Caixa Projetado para suporte à tomada de decisão.
+
+Módulo 3: Comercial & Vendas
+
+    Fluxo completo: Orçamento → Pedido → Faturamento.
+
+    CRM integrado com histórico de interações.
+
+Módulo 4: Fiscal & Compliance
+
+    Motor de regras para cálculo de impostos (ICMS, IPI, PIS, COFINS).
+
+    Integração para emissão de notas fiscais (NF-e, NFS-e).
+
+Módulo 5: BI & Dashboards Gerenciais
+
+    Uso de bibliotecas como Tremor ou Recharts para visualização de dados em tempo real.
+
+    Geração de insights automáticos para consultoria estratégica.
+
+5. IDENTIDADE VISUAL (CONTEXTO PARA UI)
+
+    Logo: Wordmark minimalista em Azul Marinho Profundo.
+
+    Tipografia: "NEXO" em maiúsculas (autoridade/solidez) e "control" em minúsculas (agilidade/facilidade).
+
+    Tom: Profissional, moderno e direto ao ponto.
+
+Instrução para a IA: Inicie a aplicação priorizando a configuração do Multi-tenancy e o Módulo de Cadastros Base. Não utilize código do projeto anterior (NXFinance); este sistema deve ser construído de forma independente e escalável.
