@@ -17,6 +17,14 @@ interface DashboardStats {
   totalRevenue: number;
   pendingPayments: number;
   lowStockProducts: number;
+  customerOnly: number;
+  supplierOnly: number;
+  carrierOnly: number;
+  both: number;
+  activeCustomers: number;
+  activeSuppliers: number;
+  incompleteTaxPercentage: string;
+  total: number;
 }
 
 export default function DashboardPage() {
@@ -29,6 +37,14 @@ export default function DashboardPage() {
     totalRevenue: 0,
     pendingPayments: 0,
     lowStockProducts: 0,
+    customerOnly: 0,
+    supplierOnly: 0,
+    carrierOnly: 0,
+    both: 0,
+    activeCustomers: 0,
+    activeSuppliers: 0,
+    incompleteTaxPercentage: '0',
+    total: 0,
   });
 
   useEffect(() => {
@@ -67,8 +83,9 @@ export default function DashboardPage() {
 
   const menuItems = [
     { icon: '📊', label: 'Dashboard', href: '/erp/dashboard', active: true },
-    { icon: '👥', label: 'Clientes', href: '/erp/clients' },
+    { icon: '👥', label: 'Clientes', href: '/erp/customers' },
     { icon: '🏢', label: 'Fornecedores', href: '/erp/suppliers' },
+    { icon: '🚚', label: 'Transportadoras', href: '/erp/carriers' },
     { icon: '📦', label: 'Produtos', href: '/erp/products' },
     { icon: '🛒', label: 'Vendas', href: '/erp/orders' },
     { icon: '💰', label: 'Financeiro', href: '/erp/finance' },
@@ -147,8 +164,8 @@ export default function DashboardPage() {
           <div className="card card-hover">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-500 text-sm">Total de Clientes</p>
-                <p className="text-3xl font-bold text-primary mt-1">{stats.totalClients}</p>
+                <p className="text-gray-500 text-sm">Clientes Ativos</p>
+                <p className="text-3xl font-bold text-primary mt-1">{stats.activeCustomers}</p>
               </div>
               <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-2xl">
                 👥
@@ -159,11 +176,11 @@ export default function DashboardPage() {
           <div className="card card-hover">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-500 text-sm">Produtos</p>
-                <p className="text-3xl font-bold text-primary mt-1">{stats.totalProducts}</p>
+                <p className="text-gray-500 text-sm">Fornecedores Ativos</p>
+                <p className="text-3xl font-bold text-primary mt-1">{stats.activeSuppliers}</p>
               </div>
               <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-2xl">
-                📦
+                🏢
               </div>
             </div>
           </div>
@@ -171,11 +188,11 @@ export default function DashboardPage() {
           <div className="card card-hover">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-500 text-sm">Pedidos</p>
-                <p className="text-3xl font-bold text-primary mt-1">{stats.totalOrders}</p>
+                <p className="text-gray-500 text-sm">Produtos</p>
+                <p className="text-3xl font-bold text-primary mt-1">{stats.totalProducts}</p>
               </div>
-              <div className="w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center text-2xl">
-                🛒
+              <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center text-2xl">
+                📦
               </div>
             </div>
           </div>
@@ -188,7 +205,7 @@ export default function DashboardPage() {
                   {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(stats.totalRevenue)}
                 </p>
               </div>
-              <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center text-2xl">
+              <div className="w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center text-2xl">
                 💰
               </div>
             </div>
@@ -197,50 +214,109 @@ export default function DashboardPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="card">
-            <h2 className="text-lg font-semibold text-primary mb-4">Alertas</h2>
-            <div className="space-y-3">
-              {stats.pendingPayments > 0 && (
-                <div className="flex items-center space-x-3 p-3 bg-yellow-50 rounded-lg">
-                  <span className="text-xl">⚠️</span>
-                  <span className="text-sm text-gray-700">
-                    {stats.pendingPayments} pagamentos pendentes
-                  </span>
+            <h2 className="text-lg font-semibold text-primary mb-4">Distribuição de Entidades</h2>
+            <div className="flex items-center justify-center">
+              <div className="relative w-48 h-48">
+                <svg viewBox="0 0 36 36" className="w-full h-full">
+                  <circle
+                    cx="18"
+                    cy="18"
+                    r="15.9155"
+                    fill="none"
+                    stroke="#e5e7eb"
+                    strokeWidth="3"
+                  />
+                  {stats.total > 0 && (
+                    <>
+                      <circle
+                        cx="18"
+                        cy="18"
+                        r="15.9155"
+                        fill="none"
+                        stroke="#3b82f6"
+                        strokeWidth="3"
+                        strokeDasharray={`${(stats.customerOnly / stats.total) * 100}, 100`}
+                        strokeDashoffset="25"
+                        transform="rotate(-90 18 18)"
+                      />
+                      <circle
+                        cx="18"
+                        cy="18"
+                        r="15.9155"
+                        fill="none"
+                        stroke="#22c55e"
+                        strokeWidth="3"
+                        strokeDasharray={`${(stats.supplierOnly / stats.total) * 100}, 100`}
+                        strokeDashoffset={25 - ((stats.customerOnly / stats.total) * 100)}
+                        transform="rotate(-90 18 18)"
+                      />
+                      <circle
+                        cx="18"
+                        cy="18"
+                        r="15.9155"
+                        fill="none"
+                        stroke="#f59e0b"
+                        strokeWidth="3"
+                        strokeDasharray={`${(stats.both / stats.total) * 100}, 100`}
+                        strokeDashoffset={25 - ((stats.customerOnly + stats.supplierOnly) / stats.total) * 100}
+                        transform="rotate(-90 18 18)"
+                      />
+                    </>
+                  )}
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-2xl font-bold text-primary">{stats.total}</span>
                 </div>
-              )}
-              {stats.lowStockProducts > 0 && (
-                <div className="flex items-center space-x-3 p-3 bg-red-50 rounded-lg">
-                  <span className="text-xl">📉</span>
-                  <span className="text-sm text-gray-700">
-                    {stats.lowStockProducts} produtos com estoque baixo
-                  </span>
-                </div>
-              )}
-              {stats.pendingPayments === 0 && stats.lowStockProducts === 0 && (
-                <div className="flex items-center space-x-3 p-3 bg-green-50 rounded-lg">
-                  <span className="text-xl">✅</span>
-                  <span className="text-sm text-gray-700">
-                    Tudo em dia!
-                  </span>
-                </div>
-              )}
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-4 mt-4">
+              <div className="text-center">
+                <div className="w-3 h-3 rounded-full bg-blue-500 mx-auto mb-1"></div>
+                <p className="text-xs text-gray-500">Clientes</p>
+                <p className="font-semibold">{stats.customerOnly}</p>
+              </div>
+              <div className="text-center">
+                <div className="w-3 h-3 rounded-full bg-green-500 mx-auto mb-1"></div>
+                <p className="text-xs text-gray-500">Fornecedores</p>
+                <p className="font-semibold">{stats.supplierOnly}</p>
+              </div>
+              <div className="text-center">
+                <div className="w-3 h-3 rounded-full bg-yellow-500 mx-auto mb-1"></div>
+                <p className="text-xs text-gray-500">Ambos</p>
+                <p className="font-semibold">{stats.both}</p>
+              </div>
             </div>
           </div>
 
           <div className="card">
-            <h2 className="text-lg font-semibold text-primary mb-4">Ações Rápidas</h2>
-            <div className="grid grid-cols-2 gap-3">
-              <a href="/erp/clients/new" className="btn-primary text-center">
-                + Novo Cliente
-              </a>
-              <a href="/erp/products/new" className="btn-primary text-center">
-                + Novo Produto
-              </a>
-              <a href="/erp/orders/new" className="btn-primary text-center">
-                + Novo Pedido
-              </a>
-              <a href="/erp/finance/payments" className="btn-primary text-center">
-                Pagamentos
-              </a>
+            <h2 className="text-lg font-semibold text-primary mb-4">Qualidade dos Dados</h2>
+            <div className="space-y-4">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-gray-600">Dados Fiscais Completos</span>
+                  <span className="text-sm font-semibold text-primary">
+                    {100 - parseFloat(stats.incompleteTaxPercentage)}%
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    className="bg-green-500 h-2 rounded-full transition-all"
+                    style={{ width: `${100 - parseFloat(stats.incompleteTaxPercentage)}%` }}
+                  ></div>
+                </div>
+              </div>
+              <div className="p-4 bg-yellow-50 rounded-lg">
+                <div className="flex items-start space-x-3">
+                  <span className="text-xl">⚠️</span>
+                  <div>
+                    <p className="font-medium text-gray-800">Cadastros Incompletos</p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {stats.incompleteTaxPercentage}% dos cadastros possuem dados fiscais incompletos.
+                      Revise os cadastros para evitar problemas fiscais.
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
