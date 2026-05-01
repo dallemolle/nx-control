@@ -1,8 +1,11 @@
 import { prisma } from '@/database/prisma';
 import { createProductSchema } from '@/lib/validations';
-import { logAudit } from './audit/AuditService';
+import { logAudit } from '@/services/audit/AuditService';
 import type { CreateProductInput } from '@/lib/validations';
-import { Decimal } from '@prisma/client/runtime';
+
+function toDecimal(value: number): string {
+  return value.toString();
+}
 
 export class ProductService {
   async findAll(tenantId: string, page = 1, limit = 20, search?: string, categoryId?: string) {
@@ -63,8 +66,8 @@ export class ProductService {
         description: validated.description,
         ncm: validated.ncm,
         barCode: validated.barCode,
-        unitPrice: new Decimal(validated.unitPrice),
-        costPrice: new Decimal(validated.costPrice),
+        unitPrice: toDecimal(validated.unitPrice),
+        costPrice: toDecimal(validated.costPrice),
         stockMin: validated.stockMin,
         stockMax: validated.stockMax,
         categoryId: validated.categoryId,
@@ -98,8 +101,8 @@ export class ProductService {
     if (data.description !== undefined) updateData.description = data.description;
     if (data.ncm !== undefined) updateData.ncm = data.ncm;
     if (data.barCode !== undefined) updateData.barCode = data.barCode;
-    if (data.unitPrice !== undefined) updateData.unitPrice = new Decimal(data.unitPrice);
-    if (data.costPrice !== undefined) updateData.costPrice = new Decimal(data.costPrice);
+    if (data.unitPrice !== undefined) updateData.unitPrice = toDecimal(data.unitPrice);
+    if (data.costPrice !== undefined) updateData.costPrice = toDecimal(data.costPrice);
     if (data.stockMin !== undefined) updateData.stockMin = data.stockMin;
     if (data.stockMax !== undefined) updateData.stockMax = data.stockMax;
     if (data.categoryId !== undefined) updateData.categoryId = data.categoryId;

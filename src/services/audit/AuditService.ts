@@ -1,5 +1,6 @@
 import { prisma } from '@/database/prisma';
 import { AuditLog, User } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 
 type AuditAction = 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'LOGOUT' | 'ACCESS';
 
@@ -21,8 +22,8 @@ export class AuditService {
         action: data.action,
         entity: data.entity,
         entityId: data.entityId,
-        oldValue: data.oldValue as AuditLog['oldValue'],
-        newValue: data.newValue as AuditLog['newValue'],
+        oldValue: data.oldValue ? data.oldValue as Prisma.InputJsonValue : undefined,
+        newValue: data.newValue ? data.newValue as Prisma.InputJsonValue : undefined,
         ipAddress: data.ipAddress,
         userAgent: data.userAgent,
         userId: data.userId,

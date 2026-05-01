@@ -1,6 +1,6 @@
 import { prisma } from '@/database/prisma';
 import { createClientSchema } from '@/lib/validations';
-import { logAudit } from './audit/AuditService';
+import { logAudit } from '@/services/audit/AuditService';
 import type { CreateClientInput } from '@/lib/validations';
 
 export class ClientService {

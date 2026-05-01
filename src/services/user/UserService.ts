@@ -1,6 +1,6 @@
 import { prisma } from '@/database/prisma';
 import { updateUserSchema } from '@/lib/validations';
-import { logAudit } from './audit/AuditService';
+import { logAudit } from '@/services/audit/AuditService';
 import bcrypt from 'bcryptjs';
 import type { UpdateUserInput } from '@/lib/validations';
 
