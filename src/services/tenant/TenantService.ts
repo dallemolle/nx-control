@@ -120,7 +120,7 @@ export class TenantService {
   }
 
   private async createDefaultChartOfAccounts(tenantId: string) {
-    const accounts = [
+    const accounts: Array<{ code: string; name: string; type: 'ASSET' | 'LIABILITY' | 'EQUITY' | 'REVENUE' | 'EXPENSE' }> = [
       { code: '1', name: 'Ativo', type: 'ASSET' },
       { code: '1.1', name: 'Ativo Circulante', type: 'ASSET' },
       { code: '1.1.01', name: 'Caixa', type: 'ASSET' },
