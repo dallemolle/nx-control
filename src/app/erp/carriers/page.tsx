@@ -3,10 +3,10 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
-export default function CustomersPage() {
+export default function CarriersPage() {
   const router = useRouter();
   useEffect(() => {
-    router.replace('/erp/cadastro/geral/lista?type=customer');
+    router.replace('/erp/cadastro/geral/lista?type=carrier');
   }, [router]);
   return null;
 }

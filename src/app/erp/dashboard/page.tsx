@@ -83,9 +83,7 @@ export default function DashboardPage() {
 
   const menuItems = [
     { icon: '📊', label: 'Dashboard', href: '/erp/dashboard', active: true },
-    { icon: '👥', label: 'Clientes', href: '/erp/customers' },
-    { icon: '🏢', label: 'Fornecedores', href: '/erp/suppliers' },
-    { icon: '🚚', label: 'Transportadoras', href: '/erp/carriers' },
+    { icon: '👥', label: 'Cadastro Geral', href: '/erp/cadastro/geral/lista' },
     { icon: '📦', label: 'Produtos', href: '/erp/products' },
     { icon: '🛒', label: 'Vendas', href: '/erp/orders' },
     { icon: '💰', label: 'Financeiro', href: '/erp/finance' },
