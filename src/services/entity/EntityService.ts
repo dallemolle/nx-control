@@ -9,9 +9,9 @@ export class EntityService {
   async findAll(tenantId: string, params: EntityQueryInput) {
     const validated = entityQuerySchema.parse(params);
     const { type, search, status, page, limit } = validated;
-    
+
     const skip = (page - 1) * limit;
-    
+
     const where: any = {
       tenantId,
       deletedAt: status === 'all' ? undefined : status === 'ACTIVE' ? null : { not: null },
@@ -57,7 +57,7 @@ export class EntityService {
     });
 
     if (existing) {
-      throw new Error('CPF/CNPJ já cadastrado para este tenant');
+      throw new Error('Ops! Parece que este CPF/CNPJ já foi adicionado anteriormente.');
     }
 
     const entity = await prisma.entity.create({
@@ -106,7 +106,7 @@ export class EntityService {
     for (const field of SENSITIVE_FIELDS) {
       const oldValue = entity[field as keyof typeof entity];
       const newValue = validated[field as keyof typeof validated];
-      
+
       if (newValue && oldValue !== newValue) {
         await this.logEntityAudit(id, tenantId, field, oldValue as string, newValue as string, userId || 'system', 'UPDATE');
       }
@@ -226,7 +226,7 @@ export class EntityService {
         where: { tenantId, isSupplier: true, status: 'ACTIVE', deletedAt: null },
       }),
       prisma.entity.count({
-        where: { 
+        where: {
           tenantId,
           OR: [
             { taxRegimeCode: undefined },

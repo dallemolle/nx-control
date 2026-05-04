@@ -2,11 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { validateDocument } from '@/lib/validations';
 
 interface FormData {
-  isCustomer: boolean;
-  isSupplier: boolean;
-  isCarrier: boolean;
+  entityType: 'customer' | 'supplier' | 'carrier';
   personType: 'PF' | 'PJ';
   fullName: string;
   tradeName: string;
@@ -30,9 +29,7 @@ interface FormData {
 export default function NewEntityPage() {
   const router = useRouter();
   const [formData, setFormData] = useState<FormData>({
-    isCustomer: false,
-    isSupplier: false,
-    isCarrier: false,
+    entityType: 'customer',
     personType: 'PF',
     fullName: '',
     tradeName: '',
@@ -54,7 +51,11 @@ export default function NewEntityPage() {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
-  const [initialType, setInitialType] = useState<'customer' | 'supplier' | 'carrier'>('customer');
+  // Document validation states
+  const [docError, setDocError] = useState<string>('');
+  const [docValid, setDocValid] = useState(false);
+  const [docChecking, setDocChecking] = useState(false);
+  const [cepLoading, setCepLoading] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -65,14 +66,11 @@ export default function NewEntityPage() {
 
     const path = window.location.pathname;
     if (path.includes('/customers/new')) {
-      setInitialType('customer');
-      setFormData((prev) => ({ ...prev, isCustomer: true }));
+      setFormData((prev) => ({ ...prev, entityType: 'customer' }));
     } else if (path.includes('/suppliers/new')) {
-      setInitialType('supplier');
-      setFormData((prev) => ({ ...prev, isSupplier: true }));
+      setFormData((prev) => ({ ...prev, entityType: 'supplier' }));
     } else if (path.includes('/carriers/new')) {
-      setInitialType('carrier');
-      setFormData((prev) => ({ ...prev, isCarrier: true }));
+      setFormData((prev) => ({ ...prev, entityType: 'carrier' }));
     }
   }, [router]);
 
@@ -85,20 +83,76 @@ export default function NewEntityPage() {
     }
   };
 
+  const handleDocumentBlur = async (e: React.FocusEvent<HTMLInputElement>) => {
+    const doc = e.target.value.replace(/\D/g, '');
+    if (doc.length < 11) return;
+
+    setDocChecking(true);
+    try {
+      if (!validateDocument(doc)) {
+        setDocError('CPF ou CNPJ inválido');
+        setDocValid(false);
+        return;
+      }
+      setDocError('');
+      setDocValid(true);
+
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const tenantId = localStorage.getItem('tenantId');
+      if (!tenantId) return;
+
+      const res = await fetch(`/api/entities/check-document?document=${doc}&tenantId=${tenantId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.exists) {
+        setDocError(`Documento já cadastrado para: ${data.entity.fullName}`);
+        setDocValid(false);
+      }
+    } catch (error) {
+      console.error('Document check failed', error);
+    } finally {
+      setDocChecking(false);
+    }
+  };
+
+  const handleCepBlur = async (e: React.FocusEvent<HTMLInputElement>) => {
+    const cep = e.target.value.replace(/\D/g, '');
+    if (cep.length !== 8) return;
+
+    setCepLoading(true);
+    try {
+      const response = await fetch(`/api/cep?cep=${cep}`);
+      const data = await response.json();
+      if (!data.error) {
+        setFormData((prev) => ({
+          ...prev,
+          zipCode: data.cep || prev.zipCode,
+          street: data.street || prev.street,
+          district: data.neighborhood || prev.district,
+          cityName: data.city || prev.cityName,
+          stateUf: data.state || prev.stateUf,
+        }));
+      }
+    } catch (error) {
+      console.error('CEP lookup failed', error);
+    } finally {
+      setCepLoading(false);
+    }
+  };
+
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.fullName.trim()) {
-      newErrors.fullName = 'Nome e obrigatorio';
+      newErrors.fullName = 'Nome é obrigatório';
     }
 
     const cleanDoc = formData.documentNumber.replace(/\D/g, '');
     if (cleanDoc.length < 11 || cleanDoc.length > 14) {
-      newErrors.documentNumber = 'CPF/CNPJ invalido';
-    }
-
-    if (!formData.isCustomer && !formData.isSupplier && !formData.isCarrier) {
-      newErrors.type = 'Selecione pelo menos um tipo de entidade';
+      newErrors.documentNumber = 'CPF/CNPJ inválido';
     }
 
     setErrors(newErrors);
@@ -113,6 +167,30 @@ export default function NewEntityPage() {
     const token = localStorage.getItem('token');
     if (!token) return;
 
+    const payload = {
+      isCustomer: formData.entityType === 'customer',
+      isSupplier: formData.entityType === 'supplier',
+      isCarrier: formData.entityType === 'carrier',
+      personType: formData.personType,
+      fullName: formData.fullName,
+      tradeName: formData.tradeName,
+      documentNumber: formData.documentNumber,
+      stateRegistration: formData.stateRegistration,
+      municipalRegistration: formData.municipalRegistration,
+      taxRegimeCode: formData.taxRegimeCode,
+      street: formData.street,
+      streetNumber: formData.streetNumber,
+      complement: formData.complement,
+      district: formData.district,
+      cityCode: formData.cityCode,
+      cityName: formData.cityName,
+      stateUf: formData.stateUf,
+      zipCode: formData.zipCode,
+      email: formData.email,
+      phone: formData.phone,
+      whatsapp: formData.whatsapp,
+    };
+
     setSaving(true);
     try {
       const response = await fetch('/api/entities', {
@@ -121,13 +199,13 @@ export default function NewEntityPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
-        if (formData.isCustomer) {
+        if (formData.entityType === 'customer') {
           router.push('/erp/customers');
-        } else if (formData.isSupplier) {
+        } else if (formData.entityType === 'supplier') {
           router.push('/erp/suppliers');
         } else {
           router.push('/erp/carriers');
@@ -174,42 +252,23 @@ export default function NewEntityPage() {
       <main className="flex-1 p-8">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-3xl font-bold text-primary mb-8">
-            {initialType === 'customer' ? 'Novo Cliente' : initialType === 'supplier' ? 'Novo Fornecedor' : 'Nova Transportadora'}
+            {formData.entityType === 'customer' ? 'Novo Cliente' : formData.entityType === 'supplier' ? 'Novo Fornecedor' : 'Nova Transportadora'}
           </h1>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="card">
               <h2 className="text-lg font-semibold text-primary mb-4">Tipo de Entidade</h2>
-              <div className="grid grid-cols-3 gap-4">
-                <label className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-gray-50">
-                  <input
-                    type="checkbox"
-                    checked={formData.isCustomer}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, isCustomer: e.target.checked }))}
-                    className="w-5 h-5 text-primary"
-                  />
-                  <span className="font-medium">Cliente</span>
-                </label>
-                <label className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-gray-50">
-                  <input
-                    type="checkbox"
-                    checked={formData.isSupplier}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, isSupplier: e.target.checked }))}
-                    className="w-5 h-5 text-primary"
-                  />
-                  <span className="font-medium">Fornecedor</span>
-                </label>
-                <label className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-gray-50">
-                  <input
-                    type="checkbox"
-                    checked={formData.isCarrier}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, isCarrier: e.target.checked }))}
-                    className="w-5 h-5 text-primary"
-                  />
-                  <span className="font-medium">Transportadora</span>
-                </label>
+              <div className="max-w-xs">
+                <select
+                  value={formData.entityType}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, entityType: e.target.value as 'customer' | 'supplier' | 'carrier' }))}
+                  className="input-field"
+                >
+                  <option value="customer">Cliente</option>
+                  <option value="supplier">Fornecedor</option>
+                  <option value="carrier">Transportadora</option>
+                </select>
               </div>
-              {errors.type && <p className="text-red-500 text-sm mt-2">{errors.type}</p>}
             </div>
 
             <div className="card">
@@ -231,14 +290,23 @@ export default function NewEntityPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     {formData.personType === 'PJ' ? 'CNPJ' : 'CPF'} <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="text"
-                    value={formData.documentNumber}
-                    onChange={(e) => handleDocumentChange(e.target.value)}
-                    placeholder={formData.personType === 'PJ' ? '00.000.000/0001-00' : '000.000.000-00'}
-                    className="input-field"
-                  />
-                  {errors.documentNumber && <p className="text-red-500 text-sm mt-1">{errors.documentNumber}</p>}
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={formData.documentNumber}
+                      onChange={(e) => handleDocumentChange(e.target.value)}
+                      onBlur={handleDocumentBlur}
+                      placeholder={formData.personType === 'PJ' ? '00.000.000/0001-00' : '000.000.000-00'}
+                      className={`input-field ${docError ? 'border-red-500' : docValid ? 'border-green-500' : ''}`}
+                    />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      {docChecking && <span className="text-gray-400 text-sm">...</span>}
+                      {!docChecking && docValid && !docError && (
+                        <span className="text-green-500 text-sm">✓</span>
+                      )}
+                    </div>
+                  </div>
+                  {docError && <p className="text-red-500 text-sm mt-1">{docError}</p>}
                 </div>
 
                 <div>
@@ -359,13 +427,22 @@ export default function NewEntityPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">CEP</label>
-                  <input
-                    type="text"
-                    value={formData.zipCode}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, zipCode: e.target.value }))}
-                    placeholder="00000-000"
-                    className="input-field"
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={formData.zipCode}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, zipCode: e.target.value }))}
+                      onBlur={handleCepBlur}
+                      placeholder="00000-000"
+                      className={`input-field ${cepLoading ? 'opacity-50' : ''}`}
+                      disabled={cepLoading}
+                    />
+                    {cepLoading && (
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+                        ...
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <div>

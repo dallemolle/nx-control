@@ -179,7 +179,7 @@ export const createEntitySchema = z.object({
   district: z.string().optional(),
   cityCode: z.string().optional(),
   cityName: z.string().optional(),
-  stateUf: z.string().length(2, 'UF deve ter 2 caracteres').optional(),
+  stateUf: z.string().min(0).max(2, 'UF deve ter no máximo 2 caracteres').optional().or(z.literal('')),
   zipCode: z.string().optional(),
   email: z.string().email('Email inválido').optional().or(z.literal('')),
   phone: z.string().optional(),
