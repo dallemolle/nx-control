@@ -86,11 +86,13 @@ export default function CarrierDetailPage() {
   const loadEntity = async (token: string) => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/entities?id=${params.id}`, {
+      const response = await fetch(`/api/entities/${params.id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      console.log('Response status:', response.status);
       if (response.ok) {
         const data = await response.json();
+        console.log('Data received:', data);
         setEntity(data);
         setFormData({
           fullName: data.fullName || '',
@@ -228,7 +230,7 @@ export default function CarrierDetailPage() {
     setSaving(true);
     setSuccess('');
     try {
-      const response = await fetch(`/api/entities?id=${params.id}`, {
+      const response = await fetch(`/api/entities/${params.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

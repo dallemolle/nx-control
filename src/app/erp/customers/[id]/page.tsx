@@ -87,7 +87,7 @@ export default function CustomerDetailPage() {
   const loadEntity = async (token: string) => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/entities?id=${params.id}`, {
+      const response = await fetch(`/api/entities/${params.id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
@@ -244,7 +244,7 @@ export default function CustomerDetailPage() {
     setSaving(true);
     setSuccess('');
     try {
-      const response = await fetch(`/api/entities?id=${params.id}`, {
+      const response = await fetch(`/api/entities/${params.id}?id=${params.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
