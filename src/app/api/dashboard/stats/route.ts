@@ -10,6 +10,10 @@ export const GET = withAuth(async (req: NextRequest) => {
       ? {} 
       : { tenantId: user.tenantId || '' };
 
+    const whereClauseWithOrder = user.role === 'ROOT'
+      ? {}
+      : { order: { tenantId: user.tenantId || '' } };
+
     const [totalClients, totalProducts, totalOrders, totalRevenue, pendingPayments, lowStockProducts] = await Promise.all([
       prisma.client.count({ where: { ...whereClause, deletedAt: null } }),
       prisma.product.count({ where: { ...whereClause, deletedAt: null } }),
@@ -20,7 +24,7 @@ export const GET = withAuth(async (req: NextRequest) => {
       }),
       prisma.payment.count({
         where: {
-          ...whereClause,
+          ...whereClauseWithOrder,
           status: 'PENDING',
         },
       }),

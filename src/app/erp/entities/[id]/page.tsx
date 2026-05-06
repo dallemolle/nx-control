@@ -1,42 +1,70 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { validateDocument, formatDocument, formatPhone, formatZipCode } from '@/lib/validations';
 
-interface FormData {
-  entityType: 'customer' | 'supplier' | 'carrier';
-  personType: 'PF' | 'PJ';
+interface Entity {
+  id: string;
   fullName: string;
-  tradeName: string;
+  tradeName: string | null;
   documentNumber: string;
-  stateRegistration: string;
-  municipalRegistration: string;
+  stateRegistration: string | null;
+  municipalRegistration: string | null;
   taxRegimeCode: number;
-  street: string;
-  streetNumber: string;
-  complement: string;
-  district: string;
-  cityCode: string;
-  cityName: string;
-  stateUf: string;
-  zipCode: string;
-  email: string;
-  phone: string;
-  whatsapp: string;
+  personType: 'PF' | 'PJ';
+  street: string | null;
+  streetNumber: string | null;
+  complement: string | null;
+  district: string | null;
+  cityCode: string | null;
+  cityName: string | null;
+  stateUf: string | null;
+  zipCode: string | null;
+  email: string | null;
+  phone: string | null;
+  whatsapp: string | null;
+  status: string;
 }
 
-export default function NewEntityPage() {
+interface AuditEntry {
+  id: string;
+  field: string;
+  oldValue: string | null;
+  newValue: string | null;
+  changedBy: string;
+  changeType: 'CREATE' | 'UPDATE' | 'DELETE';
+  createdAt: string;
+}
+
+const ENTITY_TYPES: Record<string, { label: string; path: string }> = {
+  customer: { label: 'Cliente', path: '/erp/cadastro/geral/lista?type=customer' },
+  supplier: { label: 'Fornecedor', path: '/erp/cadastro/geral/lista?type=supplier' },
+  carrier: { label: 'Transportadora', path: '/erp/cadastro/geral/lista?type=carrier' },
+};
+
+export default function EntityDetailPage() {
   const router = useRouter();
-  const [formData, setFormData] = useState<FormData>({
-    entityType: 'customer',
-    personType: 'PF',
+  const params = useParams();
+  const [entity, setEntity] = useState<Entity | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [showAudit, setShowAudit] = useState(false);
+  const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
+  const [loadingAudit, setLoadingAudit] = useState(false);
+  const [entityType, setEntityType] = useState<string>('customer');
+  const [docError, setDocError] = useState<string>('');
+  const [docValid, setDocValid] = useState(false);
+  const [docChecking, setDocChecking] = useState(false);
+  const [cepLoading, setCepLoading] = useState(false);
+  const [formData, setFormData] = useState({
     fullName: '',
     tradeName: '',
     documentNumber: '',
     stateRegistration: '',
     municipalRegistration: '',
     taxRegimeCode: 1,
+    personType: 'PF' as 'PF' | 'PJ',
     street: '',
     streetNumber: '',
     complement: '',
@@ -50,12 +78,7 @@ export default function NewEntityPage() {
     whatsapp: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [saving, setSaving] = useState(false);
-  // Document validation states
-  const [docError, setDocError] = useState<string>('');
-  const [docValid, setDocValid] = useState(false);
-  const [docChecking, setDocChecking] = useState(false);
-  const [cepLoading, setCepLoading] = useState(false);
+  const [success, setSuccess] = useState('');
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -63,16 +86,69 @@ export default function NewEntityPage() {
       router.push('/login');
       return;
     }
+    loadEntity(token);
+  }, [params.id]);
 
-    const path = window.location.pathname;
-    if (path.includes('/customers/new')) {
-      setFormData((prev) => ({ ...prev, entityType: 'customer' }));
-    } else if (path.includes('/suppliers/new')) {
-      setFormData((prev) => ({ ...prev, entityType: 'supplier' }));
-    } else if (path.includes('/carriers/new')) {
-      setFormData((prev) => ({ ...prev, entityType: 'carrier' }));
+  const loadEntity = async (token: string) => {
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/entities/${params.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setEntity(data);
+        if (data.isCustomer) setEntityType('customer');
+        else if (data.isSupplier) setEntityType('supplier');
+        else if (data.isCarrier) setEntityType('carrier');
+        const cleanDoc = data.documentNumber?.replace(/\D/g, '') || '';
+        if (cleanDoc.length > 0) {
+          setDocValid(validateDocument(cleanDoc));
+        }
+        setFormData({
+          fullName: data.fullName || '',
+          tradeName: data.tradeName || '',
+          documentNumber: data.documentNumber || '',
+          stateRegistration: data.stateRegistration || '',
+          municipalRegistration: data.municipalRegistration || '',
+          taxRegimeCode: data.taxRegimeCode || 1,
+          personType: data.personType || 'PF',
+          street: data.street || '',
+          streetNumber: data.streetNumber || '',
+          complement: data.complement || '',
+          district: data.district || '',
+          cityCode: data.cityCode || '',
+          cityName: data.cityName || '',
+          stateUf: data.stateUf || '',
+          zipCode: data.zipCode || '',
+          email: data.email || '',
+          phone: data.phone || '',
+          whatsapp: data.whatsapp || '',
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao carregar entidade');
+    } finally {
+      setLoading(false);
     }
-  }, [router]);
+  };
+
+  const loadAuditLog = async (token: string, tenantId: string) => {
+    setLoadingAudit(true);
+    try {
+      const response = await fetch(`/api/entities/${params.id}/audit?tenantId=${tenantId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setAuditLog(data.auditLog || []);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar historico');
+    } finally {
+      setLoadingAudit(false);
+    }
+  };
 
   const handleDocumentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const masked = formatDocument(e.target.value);
@@ -87,42 +163,33 @@ export default function NewEntityPage() {
   const handleDocumentBlur = async (e: React.FocusEvent<HTMLInputElement>) => {
     const doc = e.target.value.replace(/\D/g, '');
     if (doc.length < 11) return;
-
     setDocChecking(true);
     try {
       if (!validateDocument(doc)) {
-        setDocError('CPF ou CNPJ inválido');
+        setDocError('CPF ou CNPJ invalido');
         setDocValid(false);
         return;
       }
       setDocError('');
       setDocValid(true);
-
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
-      const tenantId = localStorage.getItem('tenantId');
-      if (!tenantId) return;
-
-      const res = await fetch(`/api/entities/check-document?document=${doc}&tenantId=${tenantId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (data.exists) {
-        setDocError(`Documento já cadastrado para: ${data.entity.fullName}`);
-        setDocValid(false);
-      }
-    } catch (error) {
-      console.error('Document check failed', error);
     } finally {
       setDocChecking(false);
     }
   };
 
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>, field: 'phone' | 'whatsapp') => {
+    const masked = formatPhone(e.target.value);
+    setFormData((prev) => ({ ...prev, [field]: masked }));
+  };
+
+  const handleCepChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const masked = formatZipCode(e.target.value);
+    setFormData((prev) => ({ ...prev, zipCode: masked }));
+  };
+
   const handleCepBlur = async (e: React.FocusEvent<HTMLInputElement>) => {
     const cep = e.target.value.replace(/\D/g, '');
     if (cep.length !== 8) return;
-
     setCepLoading(true);
     try {
       const response = await fetch(`/api/cep?cep=${cep}`);
@@ -144,77 +211,40 @@ export default function NewEntityPage() {
     }
   };
 
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>, field: 'phone' | 'whatsapp') => {
-    const masked = formatPhone(e.target.value);
-    setFormData((prev) => ({ ...prev, [field]: masked }));
-  };
-
-  const handleCepChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const masked = formatZipCode(e.target.value);
-    setFormData((prev) => ({ ...prev, zipCode: masked }));
-  };
-
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
-
     if (!formData.fullName.trim()) {
-      newErrors.fullName = 'Nome é obrigatório';
+      newErrors.fullName = 'Nome e obrigatorio';
     }
-
     const cleanDoc = formData.documentNumber.replace(/\D/g, '');
     if (cleanDoc.length < 11 || cleanDoc.length > 14) {
-      newErrors.documentNumber = 'CPF/CNPJ inválido';
+      newErrors.documentNumber = 'CPF/CNPJ invalido';
     }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!validate()) return;
-
     const token = localStorage.getItem('token');
     if (!token) return;
-
-    const payload = {
-      isCustomer: formData.entityType === 'customer',
-      isSupplier: formData.entityType === 'supplier',
-      isCarrier: formData.entityType === 'carrier',
-      personType: formData.personType,
-      fullName: formData.fullName,
-      tradeName: formData.tradeName,
-      documentNumber: formData.documentNumber,
-      stateRegistration: formData.stateRegistration,
-      municipalRegistration: formData.municipalRegistration,
-      taxRegimeCode: formData.taxRegimeCode,
-      street: formData.street,
-      streetNumber: formData.streetNumber,
-      complement: formData.complement,
-      district: formData.district,
-      cityCode: formData.cityCode,
-      cityName: formData.cityName,
-      stateUf: formData.stateUf,
-      zipCode: formData.zipCode,
-      email: formData.email,
-      phone: formData.phone,
-      whatsapp: formData.whatsapp,
-    };
-
     setSaving(true);
+    setSuccess('');
     try {
-      const response = await fetch('/api/entities', {
-        method: 'POST',
+      const response = await fetch(`/api/entities/${params.id}`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(formData),
       });
-
       if (response.ok) {
-        router.push('/erp/cadastro/geral/lista');
+        setSuccess('Alteracoes salvas com sucesso!');
+        setTimeout(() => {
+          router.push(ENTITY_TYPES[entityType].path);
+        }, 1500);
       } else {
         const data = await response.json();
         setErrors({ submit: data.error || 'Erro ao salvar' });
@@ -234,6 +264,22 @@ export default function NewEntityPage() {
     { icon: '💰', label: 'Financeiro', href: '/erp/finance' },
     { icon: '⚙️', label: 'Configuracoes', href: '/erp/settings' },
   ];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-gray-500">Carregando...</div>
+      </div>
+    );
+  }
+
+  if (!entity) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-red-500">{ENTITY_TYPES[entityType].label} nao encontrado</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex">
@@ -260,26 +306,69 @@ export default function NewEntityPage() {
 
       <main className="flex-1 p-8">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold text-primary mb-8">
-            {formData.entityType === 'customer' ? 'Novo Cliente' : formData.entityType === 'supplier' ? 'Novo Fornecedor' : 'Nova Transportadora'}
-          </h1>
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h1 className="text-3xl font-bold text-primary">Detalhes do {ENTITY_TYPES[entityType].label}</h1>
+              <p className="text-gray-600 mt-1">Visualize e edite as informacoes</p>
+            </div>
+            <div className="flex items-center gap-4">
+              <span
+                className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  entity.status === 'ACTIVE'
+                    ? 'bg-green-100 text-green-700'
+                    : 'bg-gray-100 text-gray-700'
+                }`}
+              >
+                {entity.status === 'ACTIVE' ? 'Ativo' : 'Inativo'}
+              </span>
+              <button
+                onClick={async () => {
+                  if (!showAudit) {
+                    const token = localStorage.getItem('token');
+                    const tenantId = localStorage.getItem('tenantId');
+                    if (token && tenantId) {
+                      await loadAuditLog(token, tenantId);
+                    }
+                  }
+                  setShowAudit(!showAudit);
+                }}
+                className="px-4 py-2 text-sm text-gray-600 hover:text-primary border rounded-lg"
+              >
+                {showAudit ? 'Ocultar Historico' : 'Ver Historico'}
+              </button>
+            </div>
+          </div>
+
+          {showAudit && (
+            <div className="card mb-6">
+              <h2 className="text-lg font-semibold text-primary mb-4">Historico de Alteracoes</h2>
+              {loadingAudit ? (
+                <p className="text-gray-500">Carregando historico...</p>
+              ) : auditLog.length > 0 ? (
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {auditLog.map((log) => (
+                    <div key={log.id} className="text-sm text-gray-600 border-b pb-2">
+                      <span className="font-medium">
+                        {log.changeType === 'CREATE' && 'Criado'}
+                        {log.changeType === 'UPDATE' && `Alterou ${log.field}`}
+                        {log.changeType === 'DELETE' && 'Inativado'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500">Nenhuma alteracao registrada</p>
+              )}
+            </div>
+          )}
+
+          {success && (
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-green-600">{success}</p>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="card">
-              <h2 className="text-lg font-semibold text-primary mb-4">Tipo de Entidade</h2>
-              <div className="max-w-xs">
-                <select
-                  value={formData.entityType}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, entityType: e.target.value as 'customer' | 'supplier' | 'carrier' }))}
-                  className="input-field"
-                >
-                  <option value="customer">Cliente</option>
-                  <option value="supplier">Fornecedor</option>
-                  <option value="carrier">Transportadora</option>
-                </select>
-              </div>
-            </div>
-
             <div className="card">
               <h2 className="text-lg font-semibold text-primary mb-4">Identificacao</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -376,7 +465,7 @@ export default function NewEntityPage() {
                         className="input-field"
                       >
                         <option value={1}>Simples Nacional</option>
-                        <option value={2}>Simples Nacional - Excessos</option>
+                        <option value={2}>Simples Nacional - Excesso</option>
                         <option value={3}>Regime Normal</option>
                         <option value={4}>Lucro Presumido</option>
                         <option value={5}>Lucro Real</option>
@@ -455,26 +544,6 @@ export default function NewEntityPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">CEP</label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={formData.zipCode}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, zipCode: e.target.value }))}
-                      onBlur={handleCepBlur}
-                      placeholder="00000-000"
-                      className={`input-field ${cepLoading ? 'opacity-50' : ''}`}
-                      disabled={cepLoading}
-                    />
-                    {cepLoading && (
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
-                        ...
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Cidade</label>
                   <input
                     type="text"
@@ -545,16 +614,16 @@ export default function NewEntityPage() {
               </div>
             )}
 
-            <div className="flex items-center justify-end space-x-4">
+            <div className="flex items-center justify-between space-x-4">
               <button
                 type="button"
-                onClick={() => router.back()}
+                onClick={() => router.push(ENTITY_TYPES[entityType].path)}
                 className="px-6 py-3 text-gray-600 hover:text-gray-800"
               >
-                Cancelar
+                Voltar
               </button>
               <button type="submit" disabled={saving} className="btn-primary">
-                {saving ? 'Salvando...' : 'Salvar'}
+                {saving ? 'Salvando...' : 'Salvar Alteracoes'}
               </button>
             </div>
           </form>

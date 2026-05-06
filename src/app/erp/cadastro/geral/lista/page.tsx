@@ -231,7 +231,7 @@ function CadastroGeralContent() {
                       </td>
                       <td className="py-3 px-4">
                         <a
-                          href={`/erp/${getEntityType(entity) === 'customer' ? 'customers' : getEntityType(entity) === 'supplier' ? 'suppliers' : 'carriers'}/${entity.id}`}
+                          href={`/erp/entities/${entity.id}`}
                           className="text-primary hover:underline text-sm"
                         >
                           Ver

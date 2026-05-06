@@ -2,11 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withTenant } from '@/middleware/auth';
 import { entityService } from '@/services/entity/EntityService';
 
+function getIdFromUrl(url: string): string | null {
+  const match = url.match(/\/api\/entities\/([^/]+)$/);
+  return match ? match[1] : null;
+}
+
 export const GET = withTenant(async (req: NextRequest) => {
   try {
     const tenantId = (req as { tenantId?: string }).tenantId!;
-    const { searchParams } = new URL(req.url);
-    const id = searchParams.get('id');
+    const id = getIdFromUrl(req.url);
 
     if (!id) {
       return NextResponse.json({ error: 'ID não especificado' }, { status: 400 });
@@ -20,6 +24,7 @@ export const GET = withTenant(async (req: NextRequest) => {
     const auditLog = await entityService.getAuditLog(id, tenantId);
     return NextResponse.json({ ...entity, auditLog });
   } catch (error) {
+    console.error('Error:', error);
     const message = error instanceof Error ? error.message : 'Erro ao buscar entidade';
     return NextResponse.json({ error: message }, { status: 500 });
   }
@@ -29,14 +34,13 @@ export const PUT = withTenant(async (req: NextRequest) => {
   try {
     const user = (req as { user?: { userId: string } }).user;
     const tenantId = (req as { tenantId?: string }).tenantId!;
-    const { searchParams } = new URL(req.url);
-    const id = searchParams.get('id');
-    const body = await req.json();
+    const id = getIdFromUrl(req.url);
 
     if (!id) {
       return NextResponse.json({ error: 'ID não especificado' }, { status: 400 });
     }
 
+    const body = await req.json();
     const entity = await entityService.update(id, tenantId, body, user?.userId);
     return NextResponse.json(entity);
   } catch (error) {
@@ -49,13 +53,13 @@ export const PATCH = withTenant(async (req: NextRequest) => {
   try {
     const user = (req as { user?: { userId: string } }).user;
     const tenantId = (req as { tenantId?: string }).tenantId!;
-    const { searchParams } = new URL(req.url);
-    const id = searchParams.get('id');
-    const body = await req.json();
+    const id = getIdFromUrl(req.url);
 
     if (!id) {
       return NextResponse.json({ error: 'ID não especificado' }, { status: 400 });
     }
+
+    const body = await req.json();
 
     if (body.action === 'deactivate') {
       await entityService.deactivate(id, tenantId, user?.userId);

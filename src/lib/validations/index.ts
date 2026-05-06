@@ -181,7 +181,7 @@ export const createEntitySchema = z.object({
   cityName: z.string().optional(),
   stateUf: z.string().min(0).max(2, 'UF deve ter no máximo 2 caracteres').optional().or(z.literal('')),
   zipCode: z.string().optional(),
-  email: z.string().email('Email inválido').optional().or(z.literal('')),
+  email: z.string().email('Email inválido').or(z.literal('')).optional(),
   phone: z.string().optional(),
   whatsapp: z.string().optional(),
   status: z.enum(['ACTIVE', 'INACTIVE']).default('ACTIVE'),
